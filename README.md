@@ -1,3 +1,50 @@
+# Sri Lanka Video Processing and Speech Transcription
+
+## Goal
+
+I want to use Google Cloud Speech and Video Intelligence APIs to 
+make everyone's job faster.
+
+## Structure
+
+### 1. Uploading files to Google Cloud Storage
+
+First, I need to upload all the files I want to work with into a Google Cloud
+storage bucket.
+
+[Google Cloud Storage](https://cloud.google.com/storage/docs/object-basics)
+
+For now, I'm going to skip this by uploading all the files I need to work with
+into my GS bucket directly.
+
+[Node.js Google Cloud Storage docs](https://github.com/googleapis/nodejs-storage/blob/master/samples/files.js)
+
+### 2. Making the API calls
+
+[GCP Video Intelligence API](https://cloud.google.com/video-intelligence/docs/analyze-labels#videointelligence-label-file-nodejs)
+
+[GCP Speech API](https://cloud.google.com/speech/docs/async-recognize#speech-async-recognize-gcs-nodejs)
+
+### 3. Processing and interpreting the responses
+
+I need to be able to search a collection of videos for specific content, and 
+I need to be able to search a transcript of audio for words and return their
+timestamps.
+
+In general, I need a quick and dirty front-end interface, so I'm going to
+use ReactJS + Material-UI. This is a fast way to build clean UI experiences.
+
+To implement the search component, I'm going to use the Auto Complete component
+from Material-UI, which takes in a data source, or a list of text, and makes a
+search bar which dynamically changes the results.
+
+I don't want to have to call the API every time I view a video, as that would 
+cost a lot of money really quickly. Instead, after calling it once, I want to 
+save the data in a database. I'm going to use the Google Firebase, because it's
+easy. 
+
+# The React readm
+
 This project was bootstrapped with [Create React App](https://github.com/facebookincubator/create-react-app).
 
 Below you will find some information on how to perform common tasks.<br>
