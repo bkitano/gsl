@@ -1,19 +1,15 @@
 var Speech = {
-  asyncRecognizeGCSWords: function(
+  listenAndWrite: function(
       gcsUri,
-      encoding,
-      languageCode
+      languageCode,
+      nameInFirebase
     ) {
       // [START speech_async_recognize_gcs_words]
       // Imports the Google Cloud client library
     const speech = require('@google-cloud/speech');
     const fire = require("./fire");
     
-    // create a reference to the firebase database
-    var db = fire.database().ref('transcripts');
-    db.on('value', snapshot => {
-      console.log(snapshot.val());
-    });
+    
     
       // Creates a client
       const client = new speech.SpeechClient({
@@ -31,7 +27,7 @@ var Speech = {
     
       const config = {
         enableWordTimeOffsets: true,
-        encoding: encoding,
+        encoding: "LINEAR16",
         languageCode: languageCode,
       };
     
@@ -55,25 +51,60 @@ var Speech = {
         })
         .then(data => {
           const response = data[0];
-          response.results.forEach(result => {
-            console.log(`Transcription: ${result.alternatives[0].transcript}`);
-            result.alternatives[0].words.forEach(wordInfo => {
-              // NOTE: If you have a time offset exceeding 2^32 seconds, use the
-              // wordInfo.{x}Time.seconds.high to calculate seconds.
-              const startSecs =
-                `${wordInfo.startTime.seconds}` +
-                `.` +
-                wordInfo.startTime.nanos / 100000000;
-              const endSecs =
-                `${wordInfo.endTime.seconds}` +
-                `.` +
-                wordInfo.endTime.nanos / 100000000;
-              console.log(`Word: ${wordInfo.word}`);
-              console.log(`\t ${startSecs} secs - ${endSecs} secs`);
-            });
+          
+          const transcription = response.results.map(result => {
+            return result.alternatives[0].transcript; // get the transcript component
+          }).join('\n');
+          
+          const wordTimes = response.results.map(result => {
+            /** results is an array of "alternatives"
+            alternatives has "transcript" (string), "confidence" (float), and "words" (object)
+            words is an object of {startTime, endTime, word}
+            if we are passing in "result" to map, we'll return a new array
+            so if we were to write :: return result.alternatives[0].words ::,
+            we'd return an array of arrays. What we want is to write a single array 
+            to the database, so if we merge all the arrays together, we'll get something
+            nice.
+            
+            It looks like the structure of the "words" object is a little more complicated;
+            
+            */
+            
+            // for each word object in the words array,
+            const denature = result.alternatives[0].words.map(wordInfo => {
+              
+              // return just this info,
+              return {
+                word: wordInfo.word,
+                startTime: parseFloat(wordInfo.startTime.seconds + '.' + wordInfo.startTime.nanos / 100000000),
+                endTime: parseFloat(wordInfo.endTime.seconds + '.' + wordInfo.endTime.nanos / 100000000)
+              }
+            }) // and make it back into a larger array,
+            
+            return denature;
+            
+          }).reduce( (a,b) => a.concat(b)); // which we will then concatenate into a gigantic array.
+          
+          // console.log(wordTimes);
+          
+          const processedData = {
+            transcription: transcription,
+            wordTimes: wordTimes
+          }
+          
+          return processedData;
+        }).then(processedData => {
+          // console.log(transcription);
+          // console.log("END OF TRANSCRIPTION");
+          
+          // create a reference and write to the firebase database
+          fire.database().ref('transcripts/' + nameInFirebase).set({
+            title: nameInFirebase,
+            transcript: processedData.transcription,
+            wordTimes: processedData.wordTimes
           });
-        })
-        .catch(err => {
+          
+        }).catch(err => {
           console.error('ERROR:', err);
         });
       // [END speech_async_recognize_gcs_words]
